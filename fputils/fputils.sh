@@ -16,8 +16,7 @@
 #USAGE
 # see help: fputils.sh -h
 #
-#VERSION
-# 1.0 by Peter Borkuti
+
 
 ############################################################################
 #                                                                          #
@@ -49,7 +48,7 @@ fpdevtool='java -jar lib/fp-dev.jar'
 ############################################################################
 
 
-ver="1.0";
+ver="1.01";
 options='hvp:c:dlgs:';
 myname=`basename $0`;
 
@@ -302,7 +301,7 @@ checking;
 echo "program will run in ${MODE} mode, for customer ${customer}, portal: ${version}"
 
 mkdir tmp;
-mkdir $myfixes;
+mkdir -p "$myfixes";
 
 if [ "$delete" == "1" ]; then
 	rm "$myfixes/*.zip";
