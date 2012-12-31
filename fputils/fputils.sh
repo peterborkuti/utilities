@@ -48,7 +48,7 @@ fpdevtool='java -jar lib/fp-dev.jar'
 ############################################################################
 
 
-ver="1.01";
+ver="1.02";
 options='hvp:c:dlgs:';
 myname=`basename $0`;
 
@@ -127,11 +127,13 @@ function checking(){
 		exit -1;
 	fi;
 
-	cd "$fixesdir";
-	if [ "$?" == "1" ]; then
-		msgErr "I can not find the directory where hotfixes are ($fixesdir).";
-		msgErr "Did not you forget to set it? See the 'CUSTOMIZATION AREA' in the text of this script.";
-		exit -1;
+	if [ "$gather" == "1" ]; then
+		cd "$fixesdir";
+		if [ "$?" == "1" ]; then
+			msgErr "I can not find the directory where hotfixes are ($fixesdir).";
+			msgErr "Did not you forget to set it? See the 'CUSTOMIZATION AREA' in the text of this script.";
+			exit -1;
+		fi;
 	fi;
 	cd "$mydir";
 
@@ -301,18 +303,25 @@ checking;
 echo "program will run in ${MODE} mode, for customer ${customer}, portal: ${version}"
 
 mkdir tmp;
-mkdir -p "$myfixes";
 
-if [ "$delete" == "1" ]; then
-	rm "$myfixes/*.zip";
+if [ "$gather" == "1" ]; then
+
+	mkdir -p "$myfixes";
+
+	if [ "$delete" == "1" ]; then
+		rm "$myfixes/*.zip";
+	fi;
+
+	zipcount=`find "$myfixes" -name '*.zip'|wc -l`
+	if [ "$zipcount"!="0" ]; then
+		echo
+		echo "WARNING: $myfixes directory is not empty. You may delete the files in it before running this script or use option '-d'."
+		echo
+	fi;
+	
 fi;
 
-zipcount=`find "$myfixes" -name '*.zip'|wc -l`
-if [ "$zipcount"!="0" ]; then
-	echo
-	echo "WARNING: $myfixes directory is not empty. You may delete the files in it before running this script or use option '-d'."
-	echo
-fi;
+
 
 if [ "$MODE" == "list" ]; then
 	listFixes;

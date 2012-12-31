@@ -1,0 +1,1 @@
+1.02 directory checking not necessary when not used option -g 
