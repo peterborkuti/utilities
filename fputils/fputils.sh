@@ -48,8 +48,8 @@ fpdevtool='java -jar lib/fp-dev.jar'
 ############################################################################
 
 
-ver="1.02";
-options='hvp:c:dlgs:';
+ver="1.04";
+options='hvp:c:dlgs:G:';
 myname=`basename $0`;
 
 cachedir='../cache';
@@ -62,7 +62,10 @@ version="";
 lpenum="";
 delete=0;
 gather=0;
+GATHER=0;
+fixpackinfofile='';
 MODE='list';
+
 
 ############################################################################
 #                                                                          #
@@ -82,14 +85,16 @@ cat << HERE_MSG
 	
 	usage:
 	
-	$myname [-l|-s|-h] -p portal-version -c customer [-d] [-g] 
+	$myname [-l|-s|-h] -p portal-version -c customer [-d] [-g] [-G path\to\patching-tool-info] 
 	
 	examples:
 	
 	$myname -h
 		this help message
+		
 	$myname -v
 		print program version number
+		
 	$myname -l -p portal-version -c customer
 		lists hotfixes for a customer (default mode)
 		example: $myname -l -p 6120 -c ALNA
@@ -100,8 +105,13 @@ cat << HERE_MSG
 		 									
 	$myname -d
 		delete the $myfixes directory before collecting hotfixes
+		
 	$myname -g
 		copy the listed hotfixes into $myfixes directory (g means gather)
+		
+	$myname -G pathcing-tool-info-file -c customer -p portal-version
+		copy the listed hotfixes based on a patching tool info file's 'Currently installed patches:' info
+		example: $myname -G info.txt -c ALNA -p 6120
 	
 	Peter Borkuti, version: $ver
 HERE_MSG
@@ -122,19 +132,28 @@ function checking(){
 		exit -1;
 	fi;
 
-	if [ "${MODE}${customer}" == "list" ]; then
+	if [ "${MODE}${customer}" == "list" ] && [ "$GATHER" == "0" ]; then
 		msgErr 'customer-name must be added with -c option!'
 		exit -1;
 	fi;
 
-	if [ "$gather" == "1" ]; then
+	if [ "$gather" == "1" ] || [ "$GATHER" == "1" ]; then
 		cd "$fixesdir";
 		if [ "$?" == "1" ]; then
 			msgErr "I can not find the directory where hotfixes are ($fixesdir).";
 			msgErr "Did not you forget to set it? See the 'CUSTOMIZATION AREA' in the text of this script.";
 			exit -1;
 		fi;
+		cd "$mydir";
 	fi;
+	
+	if [ "$GATHER" == "1" ]; then
+		if [ ! -e "$fixpackinfofile" ]; then
+			msgErr "I can not find the fix pack info file : '$fixpackinfofile'. Check it, please.";
+			exit -1;
+		fi;
+	fi;
+	
 	cd "$mydir";
 
 }
@@ -171,6 +190,10 @@ function commandLine(){
 		  ;;
 		g)
 		  gather=1;
+		  ;;
+		G)
+		  GATHER=1;
+		  fixpackinfofile="$OPTARG";
 		  ;;
 		\?)
 		  msgErr "Invalid option: -$OPTARG" >&2
@@ -219,6 +242,21 @@ function listFixes(){
 	fi;	
 
 }
+
+function listFixesFromInfoFile(){
+	local f=tmp/tmp.customerlist
+	local cf=tmp/tmp.filteredfixes
+	local ff=tmp/tmp.fixeswithfullnames
+	echo "INFO: creating hotfix list based on fp-info-file: $fixpackinfofile for $customer, version $version"  
+	sed -n -e '/Currently installed patches:/,//{s/^.*://;p;}' "$fixpackinfofile"|tr -d ' \n\r'|tr ',' '\n'|sort|uniq > $f
+
+	
+	echo "INFO: collecting saving fix-packs into directory: $myfixes"
+	sed -e '/hotfix/s/\(.*\)/liferay-\1/' $f|sed -e '/hotfix/!s/\(.*\)/liferay-fix-pack-\1/' >$ff
+	for i in `cat $ff`; do cp -v "${fixesdir}/${i}.zip" "$myfixes";	done
+
+}
+
 
 function checkFixes(){
 	local lpefile="$1";
@@ -304,7 +342,7 @@ echo "program will run in ${MODE} mode, for customer ${customer}, portal: ${vers
 
 mkdir tmp;
 
-if [ "$gather" == "1" ]; then
+if [ "$gather" == "1" ] || [ "$GATHER" == "1" ]; then
 
 	mkdir -p "$myfixes";
 
@@ -324,7 +362,11 @@ fi;
 
 
 if [ "$MODE" == "list" ]; then
-	listFixes;
+	if [ "$GATHER" == "1" ]; then
+		listFixesFromInfoFile;
+	else
+		listFixes;
+	fi
 else
 	searchFixes;
 fi;
